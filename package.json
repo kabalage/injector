@@ -1,0 +1,19 @@
+{
+  "name": "@kabalage/injector",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabalage/injector.git"
+  },
+  "author": "Balázs Kaufmann",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kabalage/injector/issues"
+  },
+  "homepage": "https://github.com/kabalage/injector#readme"
+}
