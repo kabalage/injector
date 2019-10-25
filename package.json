@@ -1,6 +1,6 @@
 {
   "name": "@kabalage/injector",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "",
   "main": "index.js",
   "publishConfig": {
@@ -15,5 +15,9 @@
   "bugs": {
     "url": "https://github.com/kabalage/injector/issues"
   },
-  "homepage": "https://github.com/kabalage/injector#readme"
+  "homepage": "https://github.com/kabalage/injector#readme",
+  "devDependencies": {
+    "eslint": "5.16.0"
+  }
+
 }

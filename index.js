@@ -5,6 +5,17 @@ export default function createInjector({
   let postInjects = [];
   let afterPostInjectHandlers = [];
 
+  function instantiate(provider, locals) {
+    if (typeof provider === 'function') {
+      provider = {
+        provide: provider,
+        deps: []
+      };
+    }
+    const depsArray = _getDepsArray(provider.deps, locals);
+    return provider.provide.apply(null, depsArray);
+  }
+
   function provide(providers) {
     for (const key in providers) {
       let provider = providers[key];
@@ -82,8 +93,15 @@ export default function createInjector({
     return [...keyOrder, key];
   }
 
-  function _getDepsArray(keys) {
-    return keys.map(key => deps[key] && deps[key].instance);
+  function _getDepsArray(keys, locals = {}) {
+    return keys.map(key => {
+      if (!deps[key] && !locals[key]) {
+        throw new Error(`Dependency not found: ${key}`);
+      } else {
+        return deps[key] && deps[key].instance
+          || locals[key];
+      }
+    });
   }
 
   function get(keys) {
@@ -107,6 +125,7 @@ export default function createInjector({
   }
 
   return {
+    instantiate,
     provide,
     get,
     requestPostInject,
