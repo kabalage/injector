@@ -3,7 +3,8 @@ import createInjector from './index';
 export default {
   install(Vue, options) {
     Vue.$services = createInjector({
-      setDepsOnWindow: process.env.NODE_ENV === 'development'
+      setDepsOnWindow: process.env.NODE_ENV === 'development',
+      selfName: '$services'
     });
     Vue.prototype.$services = Vue.$services;
 

@@ -1,9 +1,23 @@
 export default function createInjector({
-  setDepsOnWindow = false
+  setDepsOnWindow = false,
+  selfName = '$injector'
 } = {}) {
   const deps = {};
   let postInjects = [];
   let afterPostInjectHandlers = [];
+
+  const injector = {
+    instantiate,
+    provide,
+    get,
+    requestPostInject,
+    afterPostInject
+  };
+  provide({ [selfName]: () => injector });
+
+  return injector;
+
+  // ==== Methods ====
 
   function instantiate(provider, locals) {
     if (typeof provider === 'function') {
@@ -123,12 +137,4 @@ export default function createInjector({
   function afterPostInject(cb) {
     afterPostInjectHandlers.push(cb);
   }
-
-  return {
-    instantiate,
-    provide,
-    get,
-    requestPostInject,
-    afterPostInject
-  };
 }
