@@ -7,6 +7,11 @@ export default {
       selfName: '$services'
     });
     Vue.prototype.$services = Vue.$services;
+    Vue.config.optionMergeStrategies.services = (toVal, fromVal) => {
+      if (!toVal) return fromVal;
+      if (!fromVal) return toVal;
+      return toVal.concat(fromVal);
+    }
 
     Vue.mixin({
       beforeCreate() {
