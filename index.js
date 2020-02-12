@@ -121,7 +121,7 @@ export default function createInjector({
   function get(keys) {
     if (Array.isArray(keys)) {
       return keys.reduce((depsObj, key) => {
-        depsObj[key] = deps[key].instance;
+        depsObj[key] = deps[key] && deps[key].instance;
         return depsObj;
       }, {});
     } else {
