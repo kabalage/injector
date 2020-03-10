@@ -13,49 +13,64 @@ export default function createInjector({
     requestPostInject,
     afterPostInject
   };
-  provide({ [selfName]: () => injector });
+  provide([{
+    name: selfName,
+    provide() { return injector; }
+  }]);
 
   return injector;
 
   // ==== Methods ====
 
   function instantiate(provider, locals) {
-    if (typeof provider === 'function') {
-      provider = {
-        provide: provider,
-        deps: []
-      };
-    }
-    const depsArray = _getDepsArray(provider.deps, locals);
-    return provider.provide.apply(null, depsArray);
+    const resolvedDependencies =
+      Object.assign(
+        _getDependencies(provider.dependencies, true, locals),
+        _getDependencies(provider.optionalDependencies, false, locals),
+      );
+    return provider.provide(resolvedDependencies);
   }
 
   function provide(providers) {
-    for (const key in providers) {
-      let provider = providers[key];
-      if (typeof provider === 'function') {
-        provider = {
-          provide: provider,
-          deps: []
-        };
+    providers.forEach(provider => {
+      if (!provider.dependencies) {
+        provider.dependencies = [];
       }
-      deps[key] = {
+      if (!provider.optionalDependencies) {
+        provider.optionalDependencies = [];
+      }
+      if (!provider.name) {
+        console.error(`[Injector] Missing 'name' from service provider`, provider);
+        throw new Error(`Missing 'name' from service provider`);
+      }
+      if (deps[provider.name]) {
+        console.warn(`[Injector] Multiple provide called for '${provider.name}'. Maybe you forgot to rename after copy-paste? Second provide is skipped...`);
+        return;
+      }
+      deps[provider.name] = {
         provider,
         discovered: false,
         instance: null
       };
-    }
+    })
     const keyOrder = _getProvideKeyOrder();
     keyOrder.forEach((key) => {
       const dep = deps[key];
       if (dep.discovered) {
-        const depsArray = _getDepsArray(dep.provider.deps);
-        dep.instance = dep.provider.provide.apply(null, depsArray);
+        const depsArray = _getDependencies(dep.provider.dependencies, true);
+        const resolvedDependencies =
+          Object.assign(
+            _getDependencies(dep.provider.dependencies, true),
+            _getDependencies(dep.provider.optionalDependencies, false),
+          );
+        dep.instance = dep.provider.provide(resolvedDependencies);
+      } else {
+        console.error('WHAT IS THIS CASE?', key, dep);
       }
     });
     const missingPostInjects = [];
     postInjects.forEach((postInject) => {
-      const dep = get(postInject.key);
+      const dep = deps[postInject.key] && deps[postInject.key].instance;
       if (!dep) {
         console.warn(`Could not postInject dependency "${postInject.key}" as it is not available`);
         missingPostInjects.push(postInject);
@@ -74,7 +89,7 @@ export default function createInjector({
         return result;
       }, {});
     }
-    return _getDepsArray(keyOrder);
+    return _getDependencies(keyOrder);
   }
 
   function _getProvideKeyOrder() {
@@ -91,7 +106,10 @@ export default function createInjector({
 
   function _keyOrderTraverse(key, stack = []) {
     deps[key].discovered = true;
-    const dependencyKeys = deps[key].provider.deps;
+    const dependencyKeys = [
+      ...deps[key].provider.dependencies,
+      ...deps[key].provider.optionalDependencies,
+    ];
     const keyOrder = dependencyKeys.reduce((keyOrder, nextKey) => {
       if (!deps[nextKey].discovered) {
         return [...keyOrder, ..._keyOrderTraverse(nextKey, [...stack, key])];
@@ -107,23 +125,19 @@ export default function createInjector({
     return [...keyOrder, key];
   }
 
-  function _getDepsArray(keys, locals = {}) {
-    return keys.map(key => {
-      if (!deps[key] && !locals[key]) {
+  function _getDependencies(keys, strict = false, locals = {}) {
+    return keys.reduce((depsObj, key) => {
+      depsObj[key] = deps[key] && deps[key].instance || locals[key];
+      if (strict && !depsObj[key]) {
         throw new Error(`Dependency not found: ${key}`);
-      } else {
-        return deps[key] && deps[key].instance
-          || locals[key];
       }
-    });
+      return depsObj;
+    }, {});
   }
 
   function get(keys) {
     if (Array.isArray(keys)) {
-      return keys.reduce((depsObj, key) => {
-        depsObj[key] = deps[key] && deps[key].instance;
-        return depsObj;
-      }, {});
+      return _getDependencies(keys);
     } else {
       const key = keys;
       return deps[key] && deps[key].instance;
