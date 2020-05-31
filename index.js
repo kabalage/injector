@@ -57,13 +57,19 @@ export default function createInjector({
     keyOrder.forEach((key) => {
       const dep = deps[key];
       if (dep.discovered) {
-        const depsArray = _getDependencies(dep.provider.dependencies, true);
-        const resolvedDependencies =
-          Object.assign(
-            _getDependencies(dep.provider.dependencies, true),
-            _getDependencies(dep.provider.optionalDependencies, false),
-          );
-        dep.instance = dep.provider.provide(resolvedDependencies);
+        try {
+          const resolvedDependencies =
+            Object.assign(
+              _getDependencies(dep.provider.dependencies, true),
+              _getDependencies(dep.provider.optionalDependencies, false),
+            );
+          dep.instance = dep.provider.provide(resolvedDependencies);
+        } catch (err) {
+          if (err.code === 'dependencyNotFound') {
+            throw new Error(`Required dependency not found: ${key} -> ${err.key}`);
+          }
+          throw err;
+        }
       } else {
         console.error('WHAT IS THIS CASE?', key, dep);
       }
@@ -110,8 +116,13 @@ export default function createInjector({
       ...deps[key].provider.dependencies,
       ...deps[key].provider.optionalDependencies,
     ];
+    // const isOptional = (idx) => idx >= deps[key].provider.dependencies.length;
     const keyOrder = dependencyKeys.reduce((keyOrder, nextKey) => {
-      if (!deps[nextKey].discovered) {
+      // if (!deps[nextKey] && !isOptional(idx)) {
+      //   throw new Error(`Required dependency not found: ${key} -> ${nextKey}`);
+      // }
+      // TODO deps[nextKey] is undefined when dep is missing
+      if (deps[nextKey] && !deps[nextKey].discovered) {
         return [...keyOrder, ..._keyOrderTraverse(nextKey, [...stack, key])];
       } else {
         if (stack.indexOf(nextKey) >= 0) {
@@ -129,7 +140,10 @@ export default function createInjector({
     return keys.reduce((depsObj, key) => {
       depsObj[key] = deps[key] && deps[key].instance || locals[key];
       if (strict && !depsObj[key]) {
-        throw new Error(`Dependency not found: ${key}`);
+        throw Object.assign(new Error(`Dependency not found: ${key}`), {
+          code: 'dependencyNotFound',
+          key
+        });
       }
       return depsObj;
     }, {});
